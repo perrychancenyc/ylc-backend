@@ -24,7 +24,9 @@ app.use(cors({
     'https://www.yourlocalcraftsman.com', 
     'https://yourlocalcraftsman.com',
     'http://www.yourlocalcraftsman.com', 
-    'http://yourlocalcraftsman.com'
+    'http://yourlocalcraftsman.com',
+    'http://localhost:8080',
+    'http://localhost:3000'
   ],
   credentials: true
 }));
@@ -392,6 +394,13 @@ app.get('/health', (req, res) => {
 
 // Form submission endpoint
 app.post('/submit', upload.array('images', 3), (req, res) => {
+  // Debug logging
+  console.log('=== SUBMISSION DEBUG ===');
+  console.log('Headers:', req.headers['content-type']);
+  console.log('Body fields:', Object.keys(req.body));
+  console.log('Files:', req.files ? req.files.length : 'No files');
+  console.log('Raw files object:', req.files);
+
   try {
     console.log('Received submission:', req.body);
     console.log('Files received:', req.files?.length || 0);
@@ -485,12 +494,37 @@ app.post('/submit', upload.array('images', 3), (req, res) => {
   }
 });
 
-// Serve static frontend files
-app.use(express.static(path.join(__dirname, '../ylc-leadcapture')));
+// Path to your frontend folder (sibling directory)
+const FRONTEND_PATH = path.join(__dirname, '../ylc-leadcapture');
 
-// Route all unknown paths to index.html (for SPA or root-level navigation)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../ylc-leadcapture', 'index.html'));
+console.log('Frontend path:', FRONTEND_PATH);
+console.log('Frontend exists:', fs.existsSync(FRONTEND_PATH));
+
+// Serve static frontend files from the frontend directory
+app.use(express.static(FRONTEND_PATH));
+
+// Specific route for root
+app.get('/', (req, res) => {
+  const indexPath = path.join(FRONTEND_PATH, 'index.html');
+  console.log('Serving index.html from:', indexPath);
+  
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send(`index.html not found at: ${indexPath}`);
+  }
+});
+
+// Handle thank-you page
+app.get('/thank-you.html', (req, res) => {
+  const thankYouPath = path.join(FRONTEND_PATH, 'thank-you.html');
+  
+  if (fs.existsSync(thankYouPath)) {
+    res.sendFile(thankYouPath);
+  } else {
+    // If thank-you.html doesn't exist, serve thank_you.png instead
+    res.sendFile(path.join(FRONTEND_PATH, 'thank_you.png'));
+  }
 });
 
 // Error handling middleware (MUST BE LAST)
@@ -510,8 +544,10 @@ app.use((error, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
+// Start the server with localhost binding
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`YLC Backend server running on port ${PORT}`);
+  console.log(`Server accessible at: http://localhost:${PORT}`);
   console.log(`VPS: vps65064.dreamhostps.com`);
   console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
   console.log(`Accepting requests from yourlocalcraftsman.com`);
